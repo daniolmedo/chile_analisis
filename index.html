@@ -1,570 +1,484 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dashboard Económico Chile 🇨🇱</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; }
-    button { font-family: inherit; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;color:#111827}
+    button{font-family:inherit;cursor:pointer}
+    .fade-in{animation:fadeIn .3s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   </style>
 </head>
 <body>
-  <div id="root"></div>
-
+<div id="root"></div>
 <script type="text/babel">
-const { useState } = React;
-const {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Line, Cell, Legend
-} = Recharts;
+const {useState} = React;
 
-// ============================================================
-// DATA: CHILE vs OCDE
-// ============================================================
-const OCDE_DATA = [
-  {
-    id: "pib_percapita", label: "PIB per cápita", icon: "💰",
-    chile: 27000, ocde: 55000, format: "currency",
-    status: "bad", note: "49% del promedio OCDE",
-    antiTrap: "Chile duplicó su PIB per cápita real en 20 años — el mayor avance de América Latina. El gap con la OCDE se reduce sostenidamente, pero requiere décadas de crecimiento consistente. La trampa es usarlo como argumento de colapso cuando la tendencia es de convergencia.",
-    source: "Banco Mundial 2024"
-  },
-  {
-    id: "crecimiento_pib", label: "Crecimiento PIB 2024", icon: "📈",
-    chile: 2.6, ocde: 1.7, format: "percent",
-    status: "good", note: "Chile crece más que el promedio OCDE",
-    antiTrap: "Este dato refuta el argumento de que Chile está en crisis económica. Crecer 2.6% cuando la OCDE promedia 1.7% es un buen resultado. La trampa es ignorarlo y solo citar la deuda o el déficit estructural.",
-    source: "Banco Central de Chile | OCDE 2024"
-  },
-  {
-    id: "inflacion", label: "Inflación 2024", icon: "🎯",
-    chile: 4.3, ocde: 3.0, format: "percent",
-    status: "warning", note: "Sobre meta del 3% — bajando desde 14.1%",
-    antiTrap: "La inflación del 14.1% de 2022 fue causada por los 3 retiros de AFP que el Congreso aprobó contra la voluntad de Piñera. Boric la bajó a 4.3% en 2 años con ajuste fiscal duro. La trampa es culpar a Boric de una inflación que heredó.",
-    source: "Banco Central de Chile 2024"
-  },
-  {
-    id: "deuda_publica", label: "Deuda Pública / PIB", icon: "🏛️",
-    chile: 41.7, ocde: 110, format: "percent",
-    status: "good", note: "Una de las más bajas de toda la OCDE",
-    antiTrap: "Cuando digan que Chile tiene 'crisis fiscal', recuerda: la OCDE promedia 110% de deuda/PIB. Chile a 41.7% tiene una de las posiciones fiscales más sólidas del mundo desarrollado. El CFA proyecta que se mantendrá bajo el límite prudente del 45% hasta 2030.",
-    source: "DIPRES | CFA 2024"
-  },
-  {
-    id: "ingresos_trib", label: "Ingresos Tributarios / PIB", icon: "🧾",
-    chile: 20, ocde: 34, format: "percent",
-    status: "bad", note: "2do más bajo de toda la OCDE",
-    antiTrap: "La baja recaudación LIMITA la capacidad del Estado de financiar salud, educación y seguridad — no es una virtud del modelo. Los países con mejor calidad de vida (Nórdicos) recaudan 40-50% del PIB. La trampa es presentarlo como 'eficiencia fiscal'.",
-    source: "OCDE Revenue Statistics 2024"
-  },
-  {
-    id: "gini", label: "Coeficiente Gini", icon: "⚖️",
-    chile: 0.43, ocde: 0.31, format: "decimal",
-    status: "bad", note: "Uno de los más desiguales de la OCDE",
-    antiTrap: "La desigualdad es real e indefendible. Pero Chile bajó de 0.57 en 1990 a 0.43 hoy — reducción sostenida en 30 años. La trampa es ignorar la tendencia de mejora, o al contrario, conformarse porque 'viene bajando'.",
-    source: "CASEN 2024 | OCDE"
-  },
-  {
-    id: "desempleo", label: "Desempleo 2025", icon: "👷",
-    chile: 9.0, ocde: 5.0, format: "percent",
-    status: "bad", note: "Alto desempleo estructural",
-    antiTrap: "El desempleo alto es real y preocupante. Parte de la diferencia se explica por mayor participación laboral femenina (más personas buscando trabajo = sube la tasa) y por la informalidad que en otros países encubre el desempleo real.",
-    source: "INE 2025"
-  },
-  {
-    id: "part_femenina", label: "Participación Lab. Femenina", icon: "👩‍💼",
-    chile: 52, ocde: 65, format: "percent",
-    status: "bad", note: "13pp bajo el promedio OCDE",
-    antiTrap: "Esta brecha representa millones de mujeres con capacidad productiva fuera del mercado formal. No es un problema cultural irresoluble: sala cuna universal, flexibilidad laboral y corresponsabilidad parental tienen evidencia internacional sólida de impacto.",
-    source: "INE | OCDE 2024"
-  },
-  {
-    id: "ed_superior", label: "Gasto Ed. Superior / PIB", icon: "🎓",
-    chile: 1.34, ocde: 1.08, format: "percent",
-    status: "good", note: "4to más alto de toda la OCDE",
-    antiTrap: "Antes de 2016, Chile era el país con mayor costo universitario/salario de TODA la OCDE. La gratuidad no benefició a 'privilegiados': atacó el mayor factor de endeudamiento familiar. Chile ahora invierte más que el promedio OCDE en educación superior.",
-    source: "OCDE Education at a Glance 2024"
-  },
-  {
-    id: "ed_escolar", label: "Gasto Ed. Escolar / PIB", icon: "🏫",
-    chile: 3.1, ocde: 3.38, format: "percent",
-    status: "warning", note: "Levemente bajo el promedio OCDE",
-    antiTrap: "El déficit educativo de Chile está en educación básica-media, no en la universitaria. Aquí se reproduce la desigualdad: la brecha de calidad entre colegios públicos y privados determina el destino social de los niños desde los 6 años.",
-    source: "OCDE Education at a Glance 2024"
-  }
-];
-
-// ============================================================
-// DATA: GOBIERNOS
-// ============================================================
-const GOVERNMENTS = [
-  {
-    id:"bachelet1", name:"Bachelet I", period:"2006–2010", coalition:"Concertación",
-    color:"#e74c3c", gdpAvg:3.5, debtStart:5.0, debtEnd:5.8,
-    economic:{
-      headline:"Crecimiento sólido sostenido por boom de commodities",
-      summary:"Período de alto crecimiento apoyado en el súper ciclo del cobre. El gran mérito no fue solo crecer, sino guardar los excedentes en el FEES en vez de gastarlos — decisión histórica que protegería a Chile en años posteriores.",
-      metrics:[
-        {label:"PIB promedio anual",value:"3.5%",status:"good"},
-        {label:"Deuda pública fin período",value:"5.8% PIB",status:"good"},
-        {label:"Superávit estructural",value:"Mantenido",status:"good"},
-        {label:"Precio cobre promedio",value:"~US$3.0/lb",status:"good"},
-      ],
-      antiTrap:"El crecimiento de 3.5% no fue solo gestión: Chile nadaba en recursos por el súper ciclo del cobre. El mérito real fue la disciplina fiscal — guardar los excedentes en el FEES en vez de gastarlos, algo que no todos los gobiernos de la región hicieron."
-    },
-    social:{
-      headline:"Se sientan las bases del Estado de bienestar moderno",
-      summary:"Se crearon los cimientos del sistema de protección social chileno: Pilar Solidario, APS, expansión del AUGE. El mayor tropiezo fue el Transantiago, cuyo lanzamiento caótico marcó la segunda mitad del gobierno.",
-      metrics:[
-        {label:"Reforma Previsional 2008",value:"APS + pensión solidaria",status:"good"},
-        {label:"Expansión AUGE/GES",value:"+56 patologías",status:"good"},
-        {label:"Chile Crece Contigo",value:"Sistema protección infancia",status:"good"},
-        {label:"Transantiago",value:"Lanzamiento caótico",status:"bad"},
-      ],
-      antiTrap:"La reforma previsional de 2008 creó el Pilar Solidario que hoy financia las pensiones más bajas. Sin esa reforma, la crisis de pensiones de hoy sería aún más grave. Rara vez se menciona esto al debatir sobre pensiones."
-    },
-    structural:{
-      headline:"Ahorro fiscal histórico: creación del FEES",
-      summary:"La creación del Fondo de Estabilización Económico y Social (FEES) con los superávits del cobre fue la mejor herencia macroestructural de un gobierno chileno. Esa 'pólvora seca' financiaría la reconstrucción post-27F y los shocks posteriores.",
-      metrics:[
-        {label:"FEES creado",value:"US$11.000M+",status:"good"},
-        {label:"FRP Pensiones",value:"Creado y capitalizado",status:"good"},
-        {label:"Cambio deuda/PIB",value:"+0.8pp",status:"good"},
-        {label:"Regla fiscal estructural",value:"Cumplida",status:"good"},
-      ],
-      antiTrap:"La acumulación del FEES fue la 'pólvora seca' que permitió a Piñera gastar en reconstrucción post-terremoto y a los gobiernos posteriores enfrentar shocks. Fue la mejor decisión macroestructural de un gobierno chileno en democracia."
-    },
-    achievements:[
-      "✅ Creación del FEES y FRP con superávit del cobre",
-      "✅ Reforma previsional 2008 (Pilar Solidario + APS)",
-      "✅ Expansión del AUGE a 56 patologías",
-      "✅ Chile Crece Contigo: sistema de protección infancia",
-      "✅ Sólida posición fiscal para enfrentar Crisis Subprime 2009",
-      "⚠️ Transantiago: lanzamiento caótico, costo político enorme",
-      "⚠️ Terremoto 27F ocurrió 10 días antes del fin del mandato"
-    ],
-    context:{
-      favorable:["Súper ciclo del cobre (precio récord)","Economía mundial expansiva hasta 2008","Demanda asiática sin precedentes"],
-      adverse:["Crisis Subprime 2008-2009","Terremoto 27F (últimos 10 días del mandato)","Lanzamiento fallido del Transantiago"],
-      antiTrap:"Imposible separar el 3.5% de los precios del cobre. El mérito real fue no dilapidar esos recursos — algo que no hicieron Venezuela, Ecuador ni Argentina con sus bonanzas. El FEES fue una decisión contracíclica excepcional."
-    }
-  },
-  {
-    id:"pinera1", name:"Piñera I", period:"2010–2014", coalition:"Alianza",
-    color:"#2980b9", gdpAvg:5.4, debtStart:5.8, debtEnd:12.7,
-    economic:{
-      headline:"Mayor crecimiento post-dictadura — con asterisco de contexto",
-      summary:"El período de mayor crecimiento reciente, impulsado por el rebote post-terremoto y el precio récord del cobre. Los números son reales, pero el contexto fue excepcionalmente favorable y no replicable por política pública.",
-      metrics:[
-        {label:"PIB promedio anual",value:"5.4%",status:"good"},
-        {label:"Deuda pública fin período",value:"12.7% PIB",status:"warning"},
-        {label:"Desempleo mínimo",value:"6.2% (2013)",status:"good"},
-        {label:"Precio cobre promedio",value:"~US$3.5/lb (récord)",status:"good"},
-      ],
-      antiTrap:"El 5.4% y el 6.2% de desempleo son IRREPETIBLES sin el súper ciclo del cobre. El precio récord del cobre (US$4.5/lb en 2011) + rebote post-terremoto explican la mayor parte. Moody's confirmó que el deterioro fiscal empezó aquí: la deuda casi se triplicó (5.8% → 12.7%)."
-    },
-    social:{
-      headline:"Bonanza económica sin traducción en cohesión social",
-      summary:"Paradoja del período: el mayor crecimiento reciente coincidió con la mayor movilización social desde 1990. El movimiento estudiantil de 2011 mostró que el modelo generaba malestar estructural incluso en tiempos de bonanza.",
-      metrics:[
-        {label:"Movimiento estudiantil 2011",value:"Crisis política mayor",status:"bad"},
-        {label:"Desempleo (peak ciclo)",value:"6.2% mínimo",status:"good"},
-        {label:"Reducción pobreza",value:"Continuó tendencia",status:"good"},
-        {label:"Demanda por reformas",value:"Educación gratuita y de calidad",status:"warning"},
-      ],
-      antiTrap:"El gran crecimiento NO se tradujo en menor desigualdad ni en satisfacción social. El movimiento estudiantil de 2011 demostró que el modelo tenía grietas estructurales que el PIB no resolvía — y que la demanda educacional era un asunto de justicia, no de coyuntura."
-    },
-    structural:{
-      headline:"Primera gran expansión de la deuda — bajo gobierno de derecha",
-      summary:"La deuda pública casi se triplicó (+6.9pp). La causa fue legítima (reconstrucción post-27F), pero el patrón de endeudamiento estructural comenzó aquí, no con los gobiernos de izquierda posteriores.",
-      metrics:[
-        {label:"Cambio deuda/PIB",value:"+6.9pp ← 2do mayor",status:"warning"},
-        {label:"Reconstrucción 27F",value:"~US$30.000M",status:"good"},
-        {label:"FEES utilizado",value:"Para reconstrucción",status:"good"},
-        {label:"Reforma tributaria",value:"Menor a lo necesario",status:"warning"},
-      ],
-      antiTrap:"La deuda casi se triplicó bajo Piñera I (+6.9pp). Esto se omite cuando se critica el endeudamiento de gobiernos de izquierda. Moody's confirmó que el deterioro de la posición fiscal chilena comenzó en 2010, no en 2014."
-    },
-    achievements:[
-      "✅ Reconstrucción exitosa post-terremoto 27F en tiempo récord",
-      "✅ Menor desempleo histórico desde el retorno democrático (6.2%)",
-      "✅ Alto crecimiento económico (5.4% promedio)",
-      "✅ Rescate de los 33 mineros (hito comunicacional global)",
-      "⚠️ Deuda pública casi triplicada (5.8% → 12.7%)",
-      "❌ Movimiento estudiantil 2011: incapacidad de respuesta institucional",
-      "❌ Conflicto mapuche sin resolución; uso de Ley Antiterrorista"
-    ],
-    context:{
-      favorable:["Precio del cobre en récord (~US$4.5/lb en 2011)","Rebote económico post-terremoto","FEES de US$11.000M+ heredado de Bachelet I"],
-      adverse:["Terremoto 27F: primera semana de gobierno","Movimiento estudiantil 2011","Huelgas y conflicto social minero"],
-      antiTrap:"Comparar el 5.4% de Piñera I con el 2% de Boric sin mencionar el contexto es la trampa más común. Piñera I gobernó con cobre a US$4.5/lb + rebote post-terremoto + FEES lleno. Son condiciones que no volverán a darse simultáneamente."
-    }
-  },
-  {
-    id:"bachelet2", name:"Bachelet II", period:"2014–2018", coalition:"Nueva Mayoría",
-    color:"#c0392b", gdpAvg:1.8, debtStart:12.7, debtEnd:23.6,
-    economic:{
-      headline:"Desaceleración por caída del cobre y reformas simultáneas",
-      summary:"Período de desaceleración marcado por la caída del precio del cobre (-40%). Las reformas generaron incertidumbre empresarial, pero también bases para un Estado más robusto. La caída del commodity explica más que las políticas en sí.",
-      metrics:[
-        {label:"PIB promedio anual",value:"1.8%",status:"bad"},
-        {label:"Deuda pública fin período",value:"23.6% PIB",status:"warning"},
-        {label:"Caída precio cobre",value:"-40% respecto período anterior",status:"bad"},
-        {label:"Recaudación adicional",value:"+3pp PIB (reforma tributaria)",status:"good"},
-      ],
-      antiTrap:"El bajo crecimiento fue causado principalmente por la caída del cobre (-40%) — el mismo factor que había inflado el 5.4% de Piñera. Atribuirlo solo a la reforma tributaria ignora el contexto. La coincidencia temporal no es causalidad suficiente."
-    },
-    social:{
-      headline:"Mayor agenda de reformas sociales desde el retorno democrático",
-      summary:"El período con mayor densidad de cambios estructurales en democracia: gratuidad universitaria, ley de inclusión, reforma laboral, aborto en 3 causales. El costo fue político y económico en el corto plazo; el beneficio es estructural.",
-      metrics:[
-        {label:"Gratuidad universitaria",value:"Iniciada 2016",status:"good"},
-        {label:"Ley de inclusión escolar",value:"Fin al lucro subvencionado",status:"good"},
-        {label:"Reforma laboral",value:"Negociación colectiva reforzada",status:"good"},
-        {label:"Aborto 3 causales",value:"Ley aprobada 2017",status:"good"},
-      ],
-      antiTrap:"Antes de 2016, Chile era el país con mayor costo universitario/salario de TODA la OCDE. La gratuidad no benefició a 'privilegiados': atacó el mayor factor de endeudamiento de las familias de clase media. Chile ahora invierte más que el promedio OCDE en educación superior."
-    },
-    structural:{
-      headline:"Reforma tributaria con resultados mixtos pero estructuralmente necesaria",
-      summary:"La reforma aumentó la recaudación en ~3pp del PIB financiando gratuidad y servicios. La deuda subió 10.9pp, forzado más por la caída del cobre que por gasto discrecional.",
-      metrics:[
-        {label:"Cambio deuda/PIB",value:"+10.9pp",status:"bad"},
-        {label:"Recaudación adicional",value:"+3pp PIB",status:"good"},
-        {label:"Gratuidad financiada",value:"Con reforma tributaria",status:"good"},
-        {label:"Confianza empresarial",value:"Caída significativa",status:"bad"},
-      ],
-      antiTrap:"La reforma tributaria fue criticada por 'asustar' la inversión. Pero la recaudación extra financió gratuidad, médicos y profesores. La pregunta es si el costo de corto plazo valió el beneficio estructural — debate legítimo, no blanco o negro."
-    },
-    achievements:[
-      "✅ Gratuidad en educación superior (2016) — fin al mayor endeudamiento familiar",
-      "✅ Reforma tributaria: mayor recaudación del período democrático hasta ese año",
-      "✅ Ley de inclusión escolar: fin al lucro en educación subvencionada",
-      "✅ Aborto en 3 causales",
-      "✅ Reforma laboral: negociación colectiva mejorada",
-      "⚠️ Casos de corrupción: Penta, SQM — daño grave a la credibilidad",
-      "❌ Menor crecimiento del período democrático hasta ese año (1.8%)"
-    ],
-    context:{
-      favorable:["Mayoría parlamentaria amplia para reformas","Demanda social muy alta post-movilizaciones 2011"],
-      adverse:["Caída precio cobre -40% (de US$3.5 a US$2.1/lb)","Casos Penta/SQM: financiamiento ilegal","Desconfianza empresarial por reformas simultáneas"],
-      antiTrap:"Comparar el 1.8% de Bachelet II con el 5.4% de Piñera I sin mencionar la caída del cobre es la mayor trampa del debate económico chileno. Son el mismo factor — el cobre — explicando en direcciones opuestas."
-    }
-  },
-  {
-    id:"pinera2", name:"Piñera II", period:"2018–2022", coalition:"Chile Vamos",
-    color:"#1a6fa8", gdpAvg:2.5, debtStart:23.6, debtEnd:36.0,
-    economic:{
-      headline:"Estallido + pandemia + rebote artificial — el período más volátil",
-      summary:"El promedio de 2.5% esconde una realidad extrema: -5.8% en 2020 (pandemia) y +11.7% en 2021 (rebote de los retiros AFP). El dato agregado no refleja la volatilidad real ni sus consecuencias estructurales.",
-      metrics:[
-        {label:"PIB promedio anual",value:"2.5% (muy volátil)",status:"warning"},
-        {label:"PIB 2020 (pandemia)",value:"-5.8%",status:"bad"},
-        {label:"PIB 2021 (rebote AFP)",value:"+11.7%",status:"warning"},
-        {label:"Deuda pública fin período",value:"~36% PIB",status:"warning"},
-      ],
-      antiTrap:"El 11.7% de 2021 fue el mayor crecimiento de la historia chilena moderna — causado por los 3 retiros de AFP que el Congreso aprobó contra la voluntad de Piñera. Ese 'boom' artificial generó la inflación de 14.1% que Boric heredó y tuvo que combatir durante años."
-    },
-    social:{
-      headline:"Crisis social más profunda desde el retorno democrático",
-      summary:"El período de extremos: la mayor crisis social desde 1990 y al mismo tiempo la campaña de vacunación más exitosa del mundo en velocidad relativa. El estallido mostró grietas estructurales que el crecimiento anterior no había resuelto.",
-      metrics:[
-        {label:"Estallido social oct. 2019",value:"30 muertos, 460 daño ocular",status:"bad"},
-        {label:"IFE Universal 2021",value:"+5M hogares beneficiados",status:"good"},
-        {label:"Vacunación COVID",value:"1ra del mundo en velocidad",status:"good"},
-        {label:"3 retiros AFP",value:"US$50.000M fuera del sistema",status:"bad"},
-      ],
-      antiTrap:"La vacunación fue un éxito logístico genuino de Piñera — reconocido internacionalmente. El IFE fue oportuno y bien focalizado. El estallido mostró que el modelo tenía grietas que ni el 5.4% de su primer gobierno había cerrado."
-    },
-    structural:{
-      headline:"Mayor gasto fiscal histórico — mayor aumento de deuda del período democrático",
-      summary:"El mayor aumento de deuda del período democrático ocurrió bajo Piñera II (+12.4pp), no bajo gobiernos de izquierda. La pandemia justificó el gasto. Los retiros AFP no eran necesarios y son el mayor error estructural del período reciente.",
-      metrics:[
-        {label:"Cambio deuda/PIB",value:"+12.4pp ← EL MAYOR",status:"bad"},
-        {label:"3 retiros AFP",value:"US$50.000M fuera del sistema",status:"bad"},
-        {label:"Gasto COVID (IFE, Bono)",value:"Justificado — pandemia global",status:"good"},
-        {label:"Inflación heredada",value:"14.1% al fin del período",status:"bad"},
-      ],
-      antiTrap:"El MAYOR aumento de deuda del período democrático ocurrió bajo Piñera II (+12.4pp), no bajo Bachelet II (+10.9pp) ni bajo Boric (+5.7pp). La causa pandémica es legítima, pero los retiros AFP generarán consecuencias que durarán décadas."
-    },
-    achievements:[
-      "✅ Campaña de vacunación: 1ra del mundo en velocidad de inoculación",
-      "✅ IFE Universal: protección social masiva durante pandemia",
-      "✅ Proceso Constituyente: salida institucional al estallido",
-      "✅ Bono COVID y apoyos directos a hogares y empresas",
-      "⚠️ 3 retiros AFP: alivio de corto plazo, costo estructural enorme",
-      "❌ Estallido social: 30 muertos, 460 con trauma ocular, miles de heridos",
-      "❌ Inflación 14.1% al fin del período — la mayor desde 1991"
-    ],
-    context:{
-      favorable:["Reservas internacionales sólidas heredadas","Precio cobre se recuperó en 2021","Liderazgo logístico en vacunación"],
-      adverse:["Estallido social octubre 2019","Pandemia COVID-19 (2020-2021)","3 retiros AFP aprobados por Congreso en contra de su voluntad"],
-      antiTrap:"Evaluar a Piñera II sin mencionar el estallido y la pandemia es imposible. Igualmente, atribuirle el 11.7% de 2021 como logro propio es ignorar que fue el rebote de los retiros AFP que él intentó vetar."
-    }
-  },
-  {
-    id:"boric", name:"Boric", period:"2022–2026", coalition:"Apruebo Dignidad",
-    color:"#8e44ad", gdpAvg:2.0, debtStart:36.0, debtEnd:41.7,
-    economic:{
-      headline:"Ajuste macro inevitable con herencia inflacionaria de 14.1%",
-      summary:"El gobierno inició con la inflación más alta desde 1991 (heredada de los retiros AFP). El ajuste fue inevitable, costoso políticamente, pero necesario. La IED y la inversión de 2025 contradicen el relato del 'espanto de inversión'.",
-      metrics:[
-        {label:"PIB promedio anual",value:"2.0%",status:"warning"},
-        {label:"Inflación: 14.1% → 4.3%",value:"Bajó en 2 años",status:"good"},
-        {label:"IED 2022",value:"US$17.105M — máxima desde 2015",status:"good"},
-        {label:"Inversión 2025",value:"+8.9%",status:"good"},
-      ],
-      antiTrap:"'Boric espantó la inversión' es falso: la IED de 2022 fue la más alta desde 2015. La desaceleración de 2023 fue parte del ajuste antiinflacionario global, no una fuga de capitales ideológica."
-    },
-    social:{
-      headline:"Reformas estructurales en contexto fiscal adverso",
-      summary:"La Pensión Garantizada Universal beneficia directamente a adultos mayores vulnerables. La reforma previsional enfrenta bloqueo parlamentario. El desempleo del 9% es el indicador más preocupante del período.",
-      metrics:[
-        {label:"Pensión Garantizada Universal",value:"Implementada",status:"good"},
-        {label:"Reducción homicidios 2024",value:"Tendencia a la baja",status:"good"},
-        {label:"Desempleo 2025",value:"9% — el más alto del período",status:"bad"},
-        {label:"Reforma previsional",value:"Bloqueada en Congreso",status:"warning"},
-      ],
-      antiTrap:"El desempleo del 9% es real y preocupante — no se puede minimizar. Pero parte del aumento refleja mayor participación laboral femenina (más personas buscando trabajo formalmente) y la formalización de empleos que antes no se medían."
-    },
-    structural:{
-      headline:"Menor aumento de deuda de los últimos 3 gobiernos",
-      summary:"El +5.7pp es el menor de los últimos 3 gobiernos (vs +10.9pp Bachelet II y +12.4pp Piñera II). El déficit del 3.6% es real, pero el CFA y FMI confirmaron que fue por sobreestimación de ingresos, no exceso de gasto.",
-      metrics:[
-        {label:"Cambio deuda/PIB",value:"+5.7pp ← menor de 3 últimos gobs",status:"good"},
-        {label:"Déficit estructural 2025",value:"3.6% del PIB",status:"bad"},
-        {label:"Causa del déficit (CFA/FMI)",value:"Sobreestimación ingresos",status:"warning"},
-        {label:"Regla fiscal",value:"3 años sin cumplir",status:"bad"},
-      ],
-      antiTrap:"El déficit del 3.6% es real y problemático. Pero el CFA y el FMI confirmaron: fue sobreestimación sistemática de ingresos, no exceso de gasto. Además, el aumento de deuda de +5.7pp es el MENOR de los últimos 3 gobiernos — dato que rara vez aparece en el debate."
-    },
-    achievements:[
-      "✅ Reducción inflación: 14.1% → 4.3% en 2 años",
-      "✅ Pensión Garantizada Universal implementada",
-      "✅ IED 2022: máxima desde 2015 (US$17.105M)",
-      "✅ Inversión 2025: +8.9%",
-      "✅ Menor aumento de deuda pública de los últimos 3 gobiernos (+5.7pp)",
-      "⚠️ Déficit estructural 3.6% — 3 años sin cumplir regla fiscal",
-      "❌ Desempleo 9% — el más alto del período reciente",
-      "❌ Doble rechazo constitucional — costo político y de agenda enorme"
-    ],
-    context:{
-      favorable:["Precio cobre relativamente alto","Recuperación económica global post-COVID 2022"],
-      adverse:["Herencia inflacionaria 14.1% de retiros AFP","Crisis de seguridad regional (crimen organizado transnacional)","Tasas Fed en máximos históricos","Doble derrota constitucional"],
-      antiTrap:"Comparar el 2.0% de Boric con el 5.4% de Piñera I sin contexto es la mayor trampa del debate. Boric gobernó con inflación heredada de 14.1%, tasas Fed en máximos y ajuste fiscal obligatorio. Piñera I gobernó con cobre a récord, rebote post-terremoto y FEES lleno."
-    }
-  }
-];
-
-// ============================================================
-// HELPERS
-// ============================================================
-const MC = {
-  good:    ["#dcfce7","#166534","✅"],
-  warning: ["#fef9c3","#854d0e","⚠️"],
-  bad:     ["#fee2e2","#991b1b","❌"]
+/* ─── COLORES ─────────────────────────────────────── */
+const C = {
+  good:    {bg:'#dcfce7', color:'#166534', border:'#bbf7d0'},
+  warning: {bg:'#fef9c3', color:'#854d0e', border:'#fde68a'},
+  bad:     {bg:'#fee2e2', color:'#991b1b', border:'#fecaca'},
+  amber:   {bg:'#fffbeb', color:'#78350f', border:'#fde68a'},
 };
+const STATUS_LABEL = {good:'✅ Mejor que OCDE', warning:'⚠️ Mixto', bad:'❌ Bajo OCDE'};
 
-function StatusBadge({status}) {
-  const cfg = {
-    good:    {emoji:"✅", text:"Mejor que OCDE", bg:"#dcfce7", color:"#166534"},
-    warning: {emoji:"⚠️", text:"Mixto",          bg:"#fef9c3", color:"#854d0e"},
-    bad:     {emoji:"❌", text:"Bajo OCDE",       bg:"#fee2e2", color:"#991b1b"}
-  };
-  const c = cfg[status];
+/* ─── DATA: OCDE ──────────────────────────────────── */
+const OCDE = [
+  {id:'pib',   icon:'💰', label:'PIB per cápita',             chile:27000, ocde:55000, fmt:'usd',  status:'bad',
+   note:'49% del promedio OCDE',
+   antiTrap:'Chile duplicó su PIB per cápita real en 20 años — el mayor avance de América Latina. El gap con la OCDE se reduce sostenidamente, pero requiere décadas de crecimiento consistente. La trampa es usarlo como argumento de colapso cuando la tendencia es de convergencia.',
+   source:'Banco Mundial 2024'},
+  {id:'pib_crec', icon:'📈', label:'Crecimiento PIB 2024',    chile:2.6,  ocde:1.7,  fmt:'pct',  status:'good',
+   note:'Chile crece más que el promedio OCDE',
+   antiTrap:'Este dato refuta el argumento de que Chile está en crisis económica. Crecer 2.6% cuando la OCDE promedia 1.7% es un buen resultado. La trampa es ignorarlo y solo citar la deuda o el déficit estructural.',
+   source:'Banco Central de Chile | OCDE 2024'},
+  {id:'inf',  icon:'🎯', label:'Inflación 2024',              chile:4.3,  ocde:3.0,  fmt:'pct',  status:'warning',
+   note:'Sobre meta del 3% — bajando desde 14.1%',
+   antiTrap:'La inflación del 14.1% de 2022 fue causada por los 3 retiros de AFP que el Congreso aprobó contra la voluntad de Piñera. Boric la bajó a 4.3% en 2 años con ajuste fiscal duro. La trampa es culpar a Boric de una inflación que heredó.',
+   source:'Banco Central de Chile 2024'},
+  {id:'deuda', icon:'🏛️', label:'Deuda Pública / PIB',       chile:41.7, ocde:110,  fmt:'pct',  status:'good',
+   note:'Una de las más bajas de toda la OCDE',
+   antiTrap:"Cuando digan que Chile tiene 'crisis fiscal', recuerda: la OCDE promedia 110% de deuda/PIB. Chile a 41.7% tiene una de las posiciones fiscales más sólidas del mundo desarrollado. El CFA proyecta que se mantendrá bajo el límite prudente del 45% hasta 2030.",
+   source:'DIPRES | CFA 2024'},
+  {id:'trib',  icon:'🧾', label:'Ingresos Tributarios / PIB', chile:20,   ocde:34,   fmt:'pct',  status:'bad',
+   note:'2do más bajo de toda la OCDE',
+   antiTrap:"La baja recaudación LIMITA la capacidad del Estado de financiar salud, educación y seguridad — no es una virtud del modelo. Los países nórdicos recaudan 40-50% del PIB. La trampa es presentarlo como 'eficiencia fiscal'.",
+   source:'OCDE Revenue Statistics 2024'},
+  {id:'gini',  icon:'⚖️', label:'Coeficiente Gini',           chile:0.43, ocde:0.31, fmt:'dec',  status:'bad',
+   note:'Uno de los más desiguales de la OCDE',
+   antiTrap:'La desigualdad es real e indefendible. Pero Chile bajó de 0.57 en 1990 a 0.43 hoy — reducción sostenida en 30 años. La trampa es ignorar la tendencia de mejora, o conformarse porque viene bajando.',
+   source:'CASEN 2024 | OCDE'},
+  {id:'desemp', icon:'👷', label:'Desempleo 2025',             chile:9.0,  ocde:5.0,  fmt:'pct',  status:'bad',
+   note:'Alto desempleo estructural',
+   antiTrap:'El desempleo alto es real y preocupante. Parte de la diferencia se explica por mayor participación laboral femenina (más personas buscando trabajo eleva la tasa) y por informalidad que en otros países encubre el desempleo real.',
+   source:'INE 2025'},
+  {id:'fem',   icon:'👩‍💼', label:'Participación Lab. Femenina',chile:52,   ocde:65,   fmt:'pct',  status:'bad',
+   note:'13pp bajo el promedio OCDE',
+   antiTrap:'Esta brecha representa millones de mujeres con capacidad productiva fuera del mercado formal. Sala cuna universal, flexibilidad laboral y corresponsabilidad parental tienen evidencia internacional sólida de impacto.',
+   source:'INE | OCDE 2024'},
+  {id:'edus',  icon:'🎓', label:'Gasto Ed. Superior / PIB',   chile:1.34, ocde:1.08, fmt:'pct',  status:'good',
+   note:'4to más alto de toda la OCDE',
+   antiTrap:'Antes de 2016, Chile era el país con mayor costo universitario/salario de TODA la OCDE. La gratuidad no benefició a privilegiados: atacó el mayor factor de endeudamiento familiar. Chile ahora invierte más que el promedio OCDE en educación superior.',
+   source:'OCDE Education at a Glance 2024'},
+  {id:'edue',  icon:'🏫', label:'Gasto Ed. Escolar / PIB',    chile:3.1,  ocde:3.38, fmt:'pct',  status:'warning',
+   note:'Levemente bajo el promedio OCDE',
+   antiTrap:'El déficit educativo de Chile está en educación básica-media, no en la universitaria. Aquí se reproduce la desigualdad: la brecha de calidad entre colegios públicos y privados determina el destino social desde los 6 años.',
+   source:'OCDE Education at a Glance 2024'},
+];
+
+/* ─── DATA: GOBIERNOS ─────────────────────────────── */
+const GOVS = [
+  {
+    id:'b1', name:'Bachelet I', period:'2006–2010', coalition:'Concertación',
+    color:'#e74c3c', gdp:3.5, dStart:5.0, dEnd:5.8,
+    economic:{
+      headline:'Crecimiento sólido sostenido por boom de commodities',
+      summary:'Período de alto crecimiento apoyado en el súper ciclo del cobre. El gran mérito no fue solo crecer, sino guardar los excedentes en el FEES — decisión histórica que protegería a Chile en años posteriores.',
+      metrics:[{l:'PIB promedio anual',v:'3.5%',s:'good'},{l:'Deuda fin período',v:'5.8% PIB',s:'good'},{l:'Superávit estructural',v:'Mantenido',s:'good'},{l:'Precio cobre prom.',v:'~US$3.0/lb',s:'good'}],
+      antiTrap:'El 3.5% no fue solo gestión: Chile nadaba en recursos por el súper ciclo del cobre. El mérito real fue la disciplina fiscal — ahorrar los excedentes en el FEES en vez de gastarlos, algo que no hicieron Venezuela, Ecuador ni Argentina con sus bonanzas.',
+    },
+    social:{
+      headline:'Se sientan las bases del Estado de bienestar moderno',
+      summary:'Se crearon los cimientos del sistema de protección social: Pilar Solidario, APS, expansión del AUGE, Chile Crece Contigo. El mayor tropiezo fue el Transantiago.',
+      metrics:[{l:'Reforma Previsional 2008',v:'APS + Pilar Solidario',s:'good'},{l:'Expansión AUGE/GES',v:'+56 patologías',s:'good'},{l:'Chile Crece Contigo',v:'Protección infancia',s:'good'},{l:'Transantiago',v:'Lanzamiento caótico',s:'bad'}],
+      antiTrap:'La reforma previsional de 2008 creó el Pilar Solidario que hoy financia las pensiones más bajas. Sin esa reforma, la crisis de pensiones actual sería mucho más grave. Rara vez se menciona esto al debatir pensiones.',
+    },
+    structural:{
+      headline:'Ahorro fiscal histórico: creación del FEES',
+      summary:"La creación del Fondo de Estabilización Económico y Social (FEES) con los superávits del cobre fue la mejor herencia macroestructural de un gobierno chileno en democracia.",
+      metrics:[{l:'FEES creado',v:'US$11.000M+',s:'good'},{l:'FRP Pensiones',v:'Creado y capitalizado',s:'good'},{l:'Cambio deuda/PIB',v:'+0.8pp',s:'good'},{l:'Regla fiscal',v:'Cumplida',s:'good'}],
+      antiTrap:"La 'pólvora seca' del FEES permitió a Piñera gastar en reconstrucción post-27F y a los gobiernos posteriores enfrentar shocks. Es la mejor decisión macroestructural de la democracia chilena.",
+    },
+    achievements:['✅ Creación del FEES y FRP con superávit del cobre','✅ Reforma previsional 2008 (Pilar Solidario + APS)','✅ Expansión del AUGE a 56 patologías','✅ Chile Crece Contigo','✅ Manejo exitoso de la Crisis Subprime 2009','⚠️ Transantiago: lanzamiento caótico, costo político enorme','⚠️ Terremoto 27F ocurrió 10 días antes del fin del mandato'],
+    context:{
+      fav:['Súper ciclo del cobre (precio récord)','Economía mundial expansiva hasta 2008','Demanda asiática sin precedentes'],
+      adv:['Crisis Subprime 2008-2009','Terremoto 27F (últimos 10 días del mandato)','Lanzamiento fallido del Transantiago'],
+      antiTrap:'Imposible separar el 3.5% de los precios del cobre. El mérito real fue no dilapidar esos recursos. El FEES fue una decisión contracíclica excepcional que no hicieron casi ningún otro país de la región.',
+    }
+  },
+  {
+    id:'p1', name:'Piñera I', period:'2010–2014', coalition:'Alianza',
+    color:'#2980b9', gdp:5.4, dStart:5.8, dEnd:12.7,
+    economic:{
+      headline:'Mayor crecimiento post-dictadura — con asterisco de contexto',
+      summary:'El período de mayor crecimiento reciente, impulsado por el rebote post-terremoto y el precio récord del cobre. Los números son reales, pero el contexto fue excepcionalmente favorable e irrepetible.',
+      metrics:[{l:'PIB promedio anual',v:'5.4%',s:'good'},{l:'Deuda fin período',v:'12.7% PIB',s:'warning'},{l:'Desempleo mínimo',v:'6.2% (2013)',s:'good'},{l:'Precio cobre prom.',v:'~US$3.5/lb (récord)',s:'good'}],
+      antiTrap:'El 5.4% y el 6.2% de desempleo son IRREPETIBLES sin el súper ciclo del cobre. El precio récord (US$4.5/lb en 2011) + rebote post-terremoto explican la mayor parte. Moody\'s confirmó que el deterioro fiscal comenzó aquí: la deuda casi se triplicó.',
+    },
+    social:{
+      headline:'Bonanza económica sin traducción en cohesión social',
+      summary:'Paradoja del período: el mayor crecimiento reciente coincidió con la mayor movilización social desde 1990. El movimiento estudiantil de 2011 mostró grietas estructurales que el PIB no resolvía.',
+      metrics:[{l:'Mov. estudiantil 2011',v:'Crisis política mayor',s:'bad'},{l:'Desempleo (peak ciclo)',v:'6.2% mínimo',s:'good'},{l:'Reducción pobreza',v:'Continuó tendencia',s:'good'},{l:'Demanda por reformas',v:'Educación gratuita',s:'warning'}],
+      antiTrap:'El gran crecimiento NO se tradujo en menor desigualdad ni satisfacción social. El movimiento estudiantil de 2011 demostró que la demanda educacional era un asunto de justicia, no de coyuntura.',
+    },
+    structural:{
+      headline:'Primera gran expansión de la deuda — bajo gobierno de derecha',
+      summary:'La deuda pública casi se triplicó (+6.9pp). La causa fue legítima (reconstrucción post-27F), pero el patrón de endeudamiento estructural comenzó aquí, no con los gobiernos de izquierda posteriores.',
+      metrics:[{l:'Cambio deuda/PIB',v:'+6.9pp ← 2do mayor',s:'warning'},{l:'Reconstrucción 27F',v:'~US$30.000M',s:'good'},{l:'FEES utilizado',v:'Para reconstrucción',s:'good'},{l:'Reforma tributaria',v:'Menor a lo necesario',s:'warning'}],
+      antiTrap:'La deuda casi se triplicó bajo Piñera I (+6.9pp). Esto suele omitirse cuando se critica el endeudamiento de gobiernos de izquierda. Moody\'s confirmó que el deterioro de la posición fiscal chilena comenzó en 2010, no en 2014.',
+    },
+    achievements:['✅ Reconstrucción exitosa post-terremoto 27F en tiempo récord','✅ Menor desempleo histórico desde el retorno democrático (6.2%)','✅ Alto crecimiento económico (5.4% promedio)','✅ Rescate de los 33 mineros (hito comunicacional global)','⚠️ Deuda pública casi triplicada (5.8% → 12.7%)','❌ Movimiento estudiantil 2011: incapacidad de respuesta institucional','❌ Conflicto mapuche sin resolución; uso de Ley Antiterrorista'],
+    context:{
+      fav:['Precio del cobre en récord histórico (~US$4.5/lb en 2011)','Rebote económico post-terremoto','FEES de US$11.000M+ heredado de Bachelet I'],
+      adv:['Terremoto 27F: primera semana de gobierno','Movimiento estudiantil 2011','Huelgas y conflicto social minero'],
+      antiTrap:'Comparar el 5.4% de Piñera I con el 2% de Boric sin mencionar el contexto es la trampa más común. Piñera I gobernó con cobre a US$4.5/lb + rebote post-terremoto + FEES lleno. Son condiciones que no volverán a darse simultáneamente.',
+    }
+  },
+  {
+    id:'b2', name:'Bachelet II', period:'2014–2018', coalition:'Nueva Mayoría',
+    color:'#c0392b', gdp:1.8, dStart:12.7, dEnd:23.6,
+    economic:{
+      headline:'Desaceleración por caída del cobre y reformas simultáneas',
+      summary:'Período marcado por la caída del precio del cobre (-40%). Las reformas generaron incertidumbre empresarial, pero también bases para un Estado más robusto. La caída del commodity explica más que las políticas en sí.',
+      metrics:[{l:'PIB promedio anual',v:'1.8%',s:'bad'},{l:'Deuda fin período',v:'23.6% PIB',s:'warning'},{l:'Caída precio cobre',v:'-40% respecto período ant.',s:'bad'},{l:'Recaudación adicional',v:'+3pp PIB (ref. tributaria)',s:'good'}],
+      antiTrap:'El bajo crecimiento fue causado principalmente por la caída del cobre (-40%) — el mismo factor que había inflado el 5.4% de Piñera. Atribuirlo solo a la reforma tributaria ignora el contexto. La coincidencia temporal no es causalidad suficiente.',
+    },
+    social:{
+      headline:'Mayor agenda de reformas sociales desde el retorno democrático',
+      summary:'El período con mayor densidad de cambios estructurales en democracia: gratuidad, ley de inclusión, reforma laboral, aborto en 3 causales. El beneficio es estructural y de largo plazo.',
+      metrics:[{l:'Gratuidad universitaria',v:'Iniciada 2016',s:'good'},{l:'Ley de inclusión escolar',v:'Fin al lucro subvencionado',s:'good'},{l:'Reforma laboral',v:'Negociación colectiva',s:'good'},{l:'Aborto 3 causales',v:'Ley aprobada 2017',s:'good'}],
+      antiTrap:'Antes de 2016, Chile era el país con mayor costo universitario/salario de TODA la OCDE. La gratuidad no benefició a privilegiados: atacó el mayor factor de endeudamiento de las familias de clase media.',
+    },
+    structural:{
+      headline:'Reforma tributaria con resultados mixtos pero estructuralmente necesaria',
+      summary:'La reforma aumentó la recaudación en ~3pp del PIB financiando gratuidad y servicios. La deuda subió 10.9pp, forzado más por la caída del cobre que por gasto discrecional.',
+      metrics:[{l:'Cambio deuda/PIB',v:'+10.9pp',s:'bad'},{l:'Recaudación adicional',v:'+3pp PIB',s:'good'},{l:'Gratuidad financiada',v:'Con reforma tributaria',s:'good'},{l:'Confianza empresarial',v:'Caída significativa',s:'bad'}],
+      antiTrap:"La reforma tributaria fue criticada por 'asustar' la inversión. Pero la recaudación extra financió gratuidad, médicos y profesores. La pregunta es si el costo de corto plazo valió el beneficio estructural — debate legítimo, no blanco o negro.",
+    },
+    achievements:['✅ Gratuidad en educación superior (2016)','✅ Reforma tributaria: mayor recaudación del período democrático hasta ese año','✅ Ley de inclusión escolar: fin al lucro en educación subvencionada','✅ Aborto en 3 causales','✅ Reforma laboral: negociación colectiva mejorada','⚠️ Casos de corrupción: Penta, SQM — daño grave a la credibilidad','❌ Menor crecimiento del período democrático hasta ese año (1.8%)'],
+    context:{
+      fav:['Mayoría parlamentaria amplia para reformas','Demanda social muy alta post-movilizaciones 2011'],
+      adv:['Caída precio cobre -40% (de US$3.5 a US$2.1/lb)','Casos Penta/SQM: financiamiento ilegal','Desconfianza empresarial por reformas simultáneas'],
+      antiTrap:'Comparar el 1.8% de Bachelet II con el 5.4% de Piñera I sin mencionar la caída del cobre es la mayor trampa del debate económico chileno. Son el mismo factor — el cobre — explicando en direcciones opuestas.',
+    }
+  },
+  {
+    id:'p2', name:'Piñera II', period:'2018–2022', coalition:'Chile Vamos',
+    color:'#1a6fa8', gdp:2.5, dStart:23.6, dEnd:36.0,
+    economic:{
+      headline:'Estallido + pandemia + rebote artificial — el período más volátil',
+      summary:'El promedio de 2.5% esconde una realidad extrema: -5.8% en 2020 (pandemia) y +11.7% en 2021 (rebote de los retiros AFP). El dato agregado no refleja la volatilidad ni sus consecuencias estructurales.',
+      metrics:[{l:'PIB promedio anual',v:'2.5% (muy volátil)',s:'warning'},{l:'PIB 2020 (pandemia)',v:'-5.8%',s:'bad'},{l:'PIB 2021 (rebote AFP)',v:'+11.7%',s:'warning'},{l:'Deuda fin período',v:'~36% PIB',s:'warning'}],
+      antiTrap:"El 11.7% de 2021 fue el mayor crecimiento de la historia chilena moderna — causado por los 3 retiros de AFP que el Congreso aprobó contra la voluntad de Piñera. Ese 'boom' artificial generó la inflación de 14.1% que Boric heredó.",
+    },
+    social:{
+      headline:'Crisis social más profunda desde el retorno democrático',
+      summary:'El período de extremos: la mayor crisis social desde 1990 y al mismo tiempo la campaña de vacunación más exitosa del mundo en velocidad relativa.',
+      metrics:[{l:'Estallido social oct. 2019',v:'30 muertos, 460 daño ocular',s:'bad'},{l:'IFE Universal 2021',v:'+5M hogares beneficiados',s:'good'},{l:'Vacunación COVID',v:'1ra del mundo en velocidad',s:'good'},{l:'3 retiros AFP',v:'US$50.000M fuera del sistema',s:'bad'}],
+      antiTrap:'La vacunación fue un éxito logístico genuino de Piñera — reconocido internacionalmente. El IFE fue oportuno y bien focalizado. El estallido mostró grietas que ni el 5.4% de su primer gobierno había cerrado.',
+    },
+    structural:{
+      headline:'Mayor aumento de deuda del período democrático — bajo gobierno de derecha',
+      summary:'El mayor aumento de deuda del período democrático ocurrió bajo Piñera II (+12.4pp), no bajo gobiernos de izquierda. La pandemia justificó el gasto. Los retiros AFP son el mayor error estructural del período.',
+      metrics:[{l:'Cambio deuda/PIB',v:'+12.4pp ← EL MAYOR',s:'bad'},{l:'3 retiros AFP',v:'US$50.000M fuera del sistema',s:'bad'},{l:'Gasto COVID (IFE, Bono)',v:'Justificado — pandemia global',s:'good'},{l:'Inflación heredada',v:'14.1% al fin del período',s:'bad'}],
+      antiTrap:'El MAYOR aumento de deuda del período democrático ocurrió bajo Piñera II (+12.4pp), no bajo Bachelet II (+10.9pp) ni bajo Boric (+5.7pp). La pandemia justificó parte, pero los retiros AFP generarán consecuencias que durarán décadas.',
+    },
+    achievements:['✅ Campaña de vacunación: 1ra del mundo en velocidad de inoculación','✅ IFE Universal: protección social masiva durante pandemia','✅ Proceso Constituyente: salida institucional al estallido','✅ Bono COVID y apoyos directos a hogares y empresas','⚠️ 3 retiros AFP: alivio de corto plazo, costo estructural enorme','❌ Estallido social: 30 muertos, 460 con trauma ocular, miles de heridos','❌ Inflación 14.1% al fin del período — la mayor desde 1991'],
+    context:{
+      fav:['Reservas internacionales sólidas heredadas','Precio cobre se recuperó en 2021','Liderazgo logístico en vacunación'],
+      adv:['Estallido social octubre 2019','Pandemia COVID-19 (2020-2021)','3 retiros AFP aprobados por Congreso en contra de su voluntad'],
+      antiTrap:'Evaluar a Piñera II sin mencionar el estallido y la pandemia es imposible. Igualmente, atribuirle el 11.7% de 2021 como logro propio es ignorar que fue el rebote de los retiros AFP que él intentó vetar.',
+    }
+  },
+  {
+    id:'bo', name:'Boric', period:'2022–2026', coalition:'Apruebo Dignidad',
+    color:'#8e44ad', gdp:2.0, dStart:36.0, dEnd:41.7,
+    economic:{
+      headline:'Ajuste macro inevitable con herencia inflacionaria de 14.1%',
+      summary:"El gobierno inició con la inflación más alta desde 1991 (heredada de los retiros AFP). El ajuste fue inevitable, costoso políticamente pero necesario. La IED y la inversión de 2025 contradicen el relato del 'espanto de inversión'.",
+      metrics:[{l:'PIB promedio anual',v:'2.0%',s:'warning'},{l:'Inflación: 14.1% → 4.3%',v:'Bajó en 2 años',s:'good'},{l:'IED 2022',v:'US$17.105M — máx desde 2015',s:'good'},{l:'Inversión 2025',v:'+8.9%',s:'good'}],
+      antiTrap:"'Boric espantó la inversión' es falso: la IED de 2022 fue la más alta desde 2015. La desaceleración de 2023 fue parte del ajuste antiinflacionario global, no una fuga de capitales ideológica.",
+    },
+    social:{
+      headline:'Reformas estructurales en contexto fiscal adverso',
+      summary:'La Pensión Garantizada Universal beneficia a adultos mayores vulnerables. La reforma previsional enfrenta bloqueo parlamentario. El desempleo del 9% es el indicador más preocupante del período.',
+      metrics:[{l:'Pensión Garantizada Universal',v:'Implementada',s:'good'},{l:'Reducción homicidios 2024',v:'Tendencia a la baja',s:'good'},{l:'Desempleo 2025',v:'9% — el más alto del período',s:'bad'},{l:'Reforma previsional',v:'Bloqueada en Congreso',s:'warning'}],
+      antiTrap:'El desempleo del 9% es real y preocupante — no se puede minimizar. Pero parte del aumento refleja mayor participación laboral femenina (más personas buscando trabajo formalmente) y formalización de empleos.',
+    },
+    structural:{
+      headline:'Menor aumento de deuda de los últimos 3 gobiernos',
+      summary:'El +5.7pp es el menor de los últimos 3 gobiernos (vs +10.9pp Bachelet II y +12.4pp Piñera II). El déficit del 3.6% es real, pero el CFA y FMI confirmaron que fue por sobreestimación de ingresos, no exceso de gasto.',
+      metrics:[{l:'Cambio deuda/PIB',v:'+5.7pp ← menor de 3 últimos',s:'good'},{l:'Déficit estructural 2025',v:'3.6% del PIB',s:'bad'},{l:'Causa déficit (CFA/FMI)',v:'Sobreestimación ingresos',s:'warning'},{l:'Regla fiscal',v:'3 años sin cumplir',s:'bad'}],
+      antiTrap:'El déficit del 3.6% es real y problemático. Pero el CFA y el FMI confirmaron: fue sobreestimación sistemática de ingresos, no exceso de gasto. Y el aumento de deuda de +5.7pp es el MENOR de los últimos 3 gobiernos.',
+    },
+    achievements:['✅ Reducción inflación: 14.1% → 4.3% en 2 años','✅ Pensión Garantizada Universal implementada','✅ IED 2022: máxima desde 2015 (US$17.105M)','✅ Inversión 2025: +8.9%','✅ Menor aumento de deuda pública de los últimos 3 gobiernos (+5.7pp)','⚠️ Déficit estructural 3.6% — 3 años sin cumplir regla fiscal','❌ Desempleo 9% — el más alto del período reciente','❌ Doble rechazo constitucional — costo político y de agenda enorme'],
+    context:{
+      fav:['Precio cobre relativamente alto','Recuperación económica global post-COVID 2022'],
+      adv:['Herencia inflacionaria 14.1% de retiros AFP','Crisis de seguridad regional (crimen organizado)','Tasas Fed en máximos históricos','Doble derrota constitucional'],
+      antiTrap:'Comparar el 2.0% de Boric con el 5.4% de Piñera I sin contexto es la mayor trampa. Boric gobernó con inflación heredada de 14.1%, tasas Fed en máximos y ajuste fiscal obligatorio. Piñera I gobernó con cobre a récord, rebote post-terremoto y FEES lleno.',
+    }
+  }
+];
+
+/* ─── COMPONENTES HELPERS ─────────────────────────── */
+function Badge({status}){
+  const c=C[status];
+  return <span style={{display:'inline-flex',alignItems:'center',gap:4,padding:'3px 10px',
+    borderRadius:999,fontSize:11,fontWeight:700,background:c.bg,color:c.color,
+    border:`1px solid ${c.border}`}}>{STATUS_LABEL[status]}</span>;
+}
+
+function AntiTrap({text, label='🔍 Lectura anti-trampa', source}){
+  const [open,setOpen]=useState(false);
   return (
-    <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",
-      borderRadius:999,fontSize:11,fontWeight:700,background:c.bg,color:c.color}}>
-      {c.emoji} {c.text}
-    </span>
+    <div style={{marginTop:12}}>
+      <button onClick={()=>setOpen(!open)} style={{
+        width:'100%',background:open?C.amber.bg:'#f9fafb',
+        border:`1px solid ${open?C.amber.border:'#e5e7eb'}`,borderRadius:8,
+        padding:'9px 14px',fontSize:12,fontWeight:700,
+        color:open?C.amber.color:'#374151',
+        display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <span>{label}</span><span style={{fontSize:10}}>{open?'▲':'▼'}</span>
+      </button>
+      {open&&(
+        <div className="fade-in" style={{marginTop:6,padding:'12px 14px',background:C.amber.bg,
+          borderRadius:8,border:`1px solid ${C.amber.border}`}}>
+          <p style={{fontSize:12,color:C.amber.color,lineHeight:1.75,marginBottom:source?6:0}}>{text}</p>
+          {source&&<p style={{fontSize:11,color:C.amber.color,fontStyle:'italic',margin:0}}>📚 {source}</p>}
+        </div>
+      )}
+    </div>
   );
 }
 
-function fmtVal(val, format) {
-  if (format==="currency") return `US$${(val/1000).toFixed(0)}k`;
-  if (format==="percent")  return `${val}%`;
-  return `${val}`;
+function MetricCard({label,value,status}){
+  const c=C[status];
+  const icons={good:'✅',warning:'⚠️',bad:'❌'};
+  return (
+    <div style={{background:c.bg,borderRadius:10,padding:'12px 14px',border:`1px solid ${c.border}`}}>
+      <div style={{fontSize:11,color:c.color,fontWeight:700,marginBottom:4}}>{icons[status]} {label}</div>
+      <div style={{fontSize:15,fontWeight:900,color:c.color}}>{value}</div>
+    </div>
+  );
 }
 
-// ============================================================
-// OCDE DASHBOARD
-// ============================================================
-function OcdeDashboard() {
-  const [expanded, setExpanded] = useState(null);
-  const good = OCDE_DATA.filter(d=>d.status==="good").length;
-  const warn = OCDE_DATA.filter(d=>d.status==="warning").length;
-  const bad  = OCDE_DATA.filter(d=>d.status==="bad").length;
+/* Barra comparativa CSS pura */
+function CompareBar({labelA, valA, labelB, valB, fmtA, fmtB, colorA, status}){
+  const max=Math.max(valA,valB);
+  const wA=(valA/max)*100, wB=(valB/max)*100;
+  const barColor=status==='good'?'#22c55e':status==='warning'?'#f59e0b':'#ef4444';
+  const fmt=(v,f)=>f==='usd'?`US$${(v/1000).toFixed(0)}k`:f==='pct'?`${v}%`:`${v}`;
+  return (
+    <div style={{marginBottom:10}}>
+      {[{label:labelA,val:valA,f:fmtA,color:barColor,w:wA},
+        {label:labelB,val:valB,f:fmtB,color:'#6366f1',w:wB}].map((row,i)=>(
+        <div key={i} style={{marginBottom:6}}>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}>
+            <span style={{fontWeight:600,color:'#374151'}}>{row.label}</span>
+            <span style={{fontWeight:800,color:'#111827'}}>{fmt(row.val,row.f)}</span>
+          </div>
+          <div style={{height:9,background:'#f3f4f6',borderRadius:5,overflow:'hidden'}}>
+            <div style={{height:'100%',borderRadius:5,
+              width:`${row.w}%`,background:row.color,
+              transition:'width .6s ease'}}/>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-  const chartData = OCDE_DATA.filter(d=>d.format==="percent").map(d=>({
-    name: d.label.replace("Participación Lab. Femenina","Part. Laboral Fem.")
-                 .replace("Ingresos Tributarios / PIB","Ingresos Trib./PIB")
-                 .replace("Gasto Ed. Superior / PIB","Ed. Superior/PIB")
-                 .replace("Gasto Ed. Escolar / PIB","Ed. Escolar/PIB")
-                 .replace("Crecimiento PIB 2024","Crec. PIB 2024"),
-    Chile: d.chile, OCDE: d.ocde
-  }));
+/* Gráfico de barras simple CSS */
+function BarChart({data, unit='%', highlight}){
+  const max=Math.max(...data.map(d=>d.val));
+  return (
+    <div style={{display:'flex',alignItems:'flex-end',gap:8,height:160,padding:'0 4px'}}>
+      {data.map((d,i)=>{
+        const h=Math.round((d.val/max)*130);
+        const active=highlight===d.name;
+        return (
+          <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+            <span style={{fontSize:11,fontWeight:active?800:600,color:active?d.color:'#6b7280'}}>
+              {d.val}{unit}
+            </span>
+            <div style={{width:'100%',height:h,background:d.color,borderRadius:'4px 4px 0 0',
+              opacity:active?1:0.35,transition:'all .3s'}}/>
+            <span style={{fontSize:10,color:active?d.color:'#6b7280',fontWeight:active?700:400,
+              textAlign:'center',lineHeight:1.2}}>{d.name}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Gráfico de línea simple CSS/SVG */
+function LineChart({data}){
+  const vals=data.map(d=>d.val);
+  const min=Math.min(...vals), max=Math.max(...vals);
+  const W=400,H=120,PAD=30;
+  const pts=data.map((d,i)=>{
+    const x=PAD+i*((W-PAD*2)/(data.length-1));
+    const y=PAD+(1-(d.val-min)/(max-min))*(H-PAD*2);
+    return {x,y,d};
+  });
+  const path=pts.map((p,i)=>`${i===0?'M':'L'}${p.x},${p.y}`).join(' ');
+  return (
+    <div style={{overflowX:'auto'}}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',maxWidth:W}}>
+        {/* Grid lines */}
+        {[0,0.25,0.5,0.75,1].map((t,i)=>{
+          const y=PAD+(1-t)*(H-PAD*2);
+          const v=(min+(max-min)*t).toFixed(1);
+          return <g key={i}>
+            <line x1={PAD} y1={y} x2={W-10} y2={y} stroke="#f3f4f6" strokeWidth="1"/>
+            <text x={PAD-4} y={y+4} fontSize="8" fill="#9ca3af" textAnchor="end">{v}%</text>
+          </g>;
+        })}
+        {/* Line */}
+        <path d={path} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinejoin="round"/>
+        {/* Dots + labels */}
+        {pts.map((p,i)=>(
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="4" fill="#6366f1"/>
+            <text x={p.x} y={H-4} fontSize="7.5" fill="#6b7280" textAnchor="middle">
+              {p.d.etapa.replace('Inicio ','').replace('Fin ','')}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+/* ─── DASHBOARD 1: OCDE ───────────────────────────── */
+function OcdeDashboard(){
+  const [exp,setExp]=useState(null);
+  const good=OCDE.filter(d=>d.status==='good').length;
+  const warn=OCDE.filter(d=>d.status==='warning').length;
+  const bad= OCDE.filter(d=>d.status==='bad').length;
 
   return (
     <div>
       {/* Score cards */}
-      <div style={{display:"flex",gap:14,marginBottom:28,flexWrap:"wrap"}}>
-        {[
-          {count:good, label:"✅ Mejor que OCDE",   bg:"#dcfce7", color:"#166534"},
-          {count:warn, label:"⚠️ Mixto / Mejorando", bg:"#fef9c3", color:"#854d0e"},
-          {count:bad,  label:"❌ Bajo promedio OCDE", bg:"#fee2e2", color:"#991b1b"},
-        ].map((s,i)=>(
-          <div key={i} style={{flex:1,minWidth:150,background:s.bg,borderRadius:14,
-            padding:"18px 20px",textAlign:"center"}}>
-            <div style={{fontSize:36,fontWeight:900,color:s.color}}>{s.count}</div>
-            <div style={{fontSize:12,color:s.color,fontWeight:700,marginTop:2}}>{s.label}</div>
+      <div style={{display:'flex',gap:14,marginBottom:28,flexWrap:'wrap'}}>
+        {[[good,'✅ Mejor que OCDE',C.good],[warn,'⚠️ Mixto / Mejorando',C.warning],[bad,'❌ Bajo promedio OCDE',C.bad]].map(([n,l,c],i)=>(
+          <div key={i} style={{flex:1,minWidth:150,background:c.bg,borderRadius:14,padding:'18px 20px',textAlign:'center',border:`1px solid ${c.border}`}}>
+            <div style={{fontSize:36,fontWeight:900,color:c.color}}>{n}</div>
+            <div style={{fontSize:12,color:c.color,fontWeight:700,marginTop:2}}>{l}</div>
           </div>
         ))}
       </div>
 
-      {/* Cards grid */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:16,marginBottom:32}}>
-        {OCDE_DATA.map(item=>{
-          const max   = Math.max(item.chile, item.ocde);
-          const wC    = (item.chile/max)*100;
-          const wO    = (item.ocde/max)*100;
-          const isOpen= expanded===item.id;
-          const barC  = item.status==="good"?"#22c55e":item.status==="warning"?"#f59e0b":"#ef4444";
-          return (
-            <div key={item.id} style={{background:"white",borderRadius:14,padding:20,
-              boxShadow:"0 1px 4px rgba(0,0,0,0.08)",border:"1px solid #e5e7eb"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
-                <div>
-                  <span style={{fontSize:22}}>{item.icon}</span>
-                  <div style={{fontWeight:800,fontSize:15,color:"#111827",marginTop:4}}>{item.label}</div>
-                  <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>{item.note}</div>
-                </div>
-                <StatusBadge status={item.status}/>
+      {/* Cards */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(310px,1fr))',gap:16,marginBottom:32}}>
+        {OCDE.map(item=>(
+          <div key={item.id} style={{background:'white',borderRadius:14,padding:20,
+            boxShadow:'0 1px 4px rgba(0,0,0,0.08)',border:'1px solid #e5e7eb'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
+              <div>
+                <span style={{fontSize:22}}>{item.icon}</span>
+                <div style={{fontWeight:800,fontSize:15,color:'#111827',marginTop:4}}>{item.label}</div>
+                <div style={{fontSize:11,color:'#6b7280',marginTop:2}}>{item.note}</div>
               </div>
-              {["chile","ocde"].map(who=>(
-                <div key={who} style={{marginBottom:8}}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
-                    <span style={{fontWeight:600,color:"#374151"}}>{who==="chile"?"🇨🇱 Chile":"🌍 OCDE promedio"}</span>
-                    <span style={{fontWeight:800,color:"#111827"}}>{fmtVal(item[who],item.format)}</span>
-                  </div>
-                  <div style={{height:8,background:"#f3f4f6",borderRadius:4,overflow:"hidden"}}>
-                    <div style={{height:"100%",borderRadius:4,transition:"width .5s",
-                      width:`${who==="chile"?wC:wO}%`,
-                      background:who==="chile"?barC:"#6366f1"}}/>
-                  </div>
-                </div>
-              ))}
-              <button onClick={()=>setExpanded(isOpen?null:item.id)} style={{
-                width:"100%",marginTop:10,background:isOpen?"#fffbeb":"#f9fafb",
-                border:`1px solid ${isOpen?"#f59e0b":"#e5e7eb"}`,borderRadius:8,
-                padding:"8px 12px",cursor:"pointer",textAlign:"left",
-                fontSize:12,fontWeight:700,color:isOpen?"#92400e":"#374151",
-                display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span>🔍 Lectura anti-trampa</span>
-                <span style={{fontSize:10}}>{isOpen?"▲":"▼"}</span>
-              </button>
-              {isOpen&&(
-                <div style={{marginTop:8,padding:"12px 14px",background:"#fffbeb",
-                  borderRadius:8,border:"1px solid #fde68a"}}>
-                  <p style={{fontSize:12,color:"#78350f",lineHeight:1.7,margin:"0 0 6px 0"}}>{item.antiTrap}</p>
-                  <p style={{fontSize:11,color:"#92400e",fontStyle:"italic",margin:0}}>📚 {item.source}</p>
-                </div>
-              )}
+              <Badge status={item.status}/>
             </div>
-          );
-        })}
+            <CompareBar labelA="🇨🇱 Chile" valA={item.chile} fmtA={item.fmt}
+                        labelB="🌍 OCDE promedio" valB={item.ocde} fmtB={item.fmt}
+                        status={item.status}/>
+            <AntiTrap text={item.antiTrap} source={item.source}/>
+          </div>
+        ))}
       </div>
 
-      {/* Chart */}
-      <div style={{background:"white",borderRadius:14,padding:24,
-        boxShadow:"0 1px 4px rgba(0,0,0,0.08)",border:"1px solid #e5e7eb"}}>
-        <div style={{fontWeight:800,fontSize:15,color:"#111827",marginBottom:18}}>
-          📊 Comparativa: indicadores porcentuales Chile vs OCDE
+      {/* Comparison chart */}
+      <div style={{background:'white',borderRadius:14,padding:24,
+        boxShadow:'0 1px 4px rgba(0,0,0,0.08)',border:'1px solid #e5e7eb'}}>
+        <div style={{fontWeight:800,fontSize:15,color:'#111827',marginBottom:6}}>
+          📊 Comparativa visual: indicadores porcentuales Chile vs OCDE
         </div>
-        <ResponsiveContainer width="100%" height={290}>
-          <BarChart data={chartData} margin={{top:5,right:20,left:0,bottom:75}}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/>
-            <XAxis dataKey="name" angle={-35} textAnchor="end" tick={{fontSize:10}}/>
-            <YAxis tick={{fontSize:11}}/>
-            <Tooltip/>
-            <Legend verticalAlign="top"/>
-            <Bar dataKey="Chile" fill="#ef4444" name="🇨🇱 Chile" radius={[4,4,0,0]}/>
-            <Bar dataKey="OCDE"  fill="#6366f1" name="🌍 OCDE"  radius={[4,4,0,0]}/>
-          </BarChart>
-        </ResponsiveContainer>
+        <p style={{fontSize:12,color:'#6b7280',marginBottom:20}}>Barra roja = Chile · Barra azul = OCDE promedio</p>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(250px,1fr))',gap:12}}>
+          {OCDE.filter(d=>d.fmt==='pct').map(item=>(
+            <div key={item.id} style={{background:'#f9fafb',borderRadius:10,padding:'12px 14px'}}>
+              <div style={{fontSize:12,fontWeight:700,color:'#374151',marginBottom:10}}>
+                {item.icon} {item.label}
+              </div>
+              {[{lbl:'🇨🇱 Chile',val:item.chile,color:item.status==='good'?'#22c55e':item.status==='warning'?'#f59e0b':'#ef4444'},
+                {lbl:'🌍 OCDE',val:item.ocde,color:'#6366f1'}].map((row,i)=>{
+                  const max=Math.max(item.chile,item.ocde);
+                  return (
+                    <div key={i} style={{marginBottom:6}}>
+                      <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:2}}>
+                        <span style={{color:'#374151'}}>{row.lbl}</span>
+                        <span style={{fontWeight:700}}>{row.val}%</span>
+                      </div>
+                      <div style={{height:7,background:'#e5e7eb',borderRadius:4}}>
+                        <div style={{height:'100%',borderRadius:4,background:row.color,width:`${(row.val/max)*100}%`}}/>
+                      </div>
+                    </div>
+                  );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-// ============================================================
-// GOVERNMENTS DASHBOARD
-// ============================================================
-function GovernmentsDashboard() {
-  const [selGov, setSelGov] = useState("bachelet1");
-  const [selCat, setSelCat] = useState("economic");
-  const [openAT, setOpenAT] = useState(false);
+/* ─── DASHBOARD 2: GOBIERNOS ──────────────────────── */
+const CATS=[
+  {id:'economic',   label:'💹 Económico'},
+  {id:'social',     label:'🤝 Social'},
+  {id:'structural', label:'🏗️ Estructural'},
+  {id:'achievements',label:'🏆 Logros'},
+  {id:'context',    label:'🌐 Contexto'},
+];
 
-  const gov = GOVERNMENTS.find(g=>g.id===selGov);
+function GovsDashboard(){
+  const [selG,setSelG]=useState('b1');
+  const [selC,setSelC]=useState('economic');
+  const gov=GOVS.find(g=>g.id===selG);
 
-  const cats = [
-    {id:"economic",     label:"💹 Económico"},
-    {id:"social",       label:"🤝 Social"},
-    {id:"structural",   label:"🏗️ Estructural"},
-    {id:"achievements", label:"🏆 Logros"},
-    {id:"context",      label:"🌐 Contexto"},
+  const switchG=id=>{setSelG(id);setSelC('economic');};
+
+  const gdpData=GOVS.map(g=>({name:g.name,val:g.gdp,color:g.color}));
+  const debtData=[
+    {etapa:'Inicio Bachelet I',val:5.0},{etapa:'Fin Bachelet I',val:5.8},
+    {etapa:'Fin Piñera I',val:12.7},{etapa:'Fin Bachelet II',val:23.6},
+    {etapa:'Fin Piñera II',val:36.0},{etapa:'Fin Boric',val:41.7},
   ];
 
-  const gdpChart  = GOVERNMENTS.map(g=>({name:g.name, pib:g.gdpAvg, color:g.color}));
-  const debtChart = [
-    {etapa:"Inicio Bachelet I", deuda:5.0},
-    {etapa:"Fin Bachelet I",    deuda:5.8},
-    {etapa:"Fin Piñera I",      deuda:12.7},
-    {etapa:"Fin Bachelet II",   deuda:23.6},
-    {etapa:"Fin Piñera II",     deuda:36.0},
-    {etapa:"Fin Boric",         deuda:41.7},
-  ];
-
-  const switchGov = id => { setSelGov(id); setSelCat("economic"); setOpenAT(false); };
-  const switchCat = id => { setSelCat(id); setOpenAT(false); };
-  const data = (selCat!=="achievements"&&selCat!=="context") ? gov[selCat] : null;
+  const data=gov[selC];
 
   return (
     <div>
       {/* Gov selector */}
-      <div style={{display:"flex",gap:10,marginBottom:22,flexWrap:"wrap"}}>
-        {GOVERNMENTS.map(g=>{
-          const active=selGov===g.id;
+      <div style={{display:'flex',gap:10,marginBottom:22,flexWrap:'wrap'}}>
+        {GOVS.map(g=>{
+          const active=selG===g.id;
           return (
-            <button key={g.id} onClick={()=>switchGov(g.id)} style={{
-              flex:1,minWidth:130,padding:"12px 14px",borderRadius:12,cursor:"pointer",
-              border:`2px solid ${active?g.color:"#e5e7eb"}`,
-              background:active?g.color:"white",
-              color:active?"white":"#374151",
-              fontWeight:700,fontSize:13,transition:"all .2s",textAlign:"center"}}>
+            <button key={g.id} onClick={()=>switchG(g.id)} style={{
+              flex:1,minWidth:120,padding:'11px 12px',borderRadius:12,
+              border:`2px solid ${active?g.color:'#e5e7eb'}`,
+              background:active?g.color:'white',color:active?'white':'#374151',
+              fontWeight:700,fontSize:13,transition:'all .2s',textAlign:'center'}}>
               <div style={{fontSize:14}}>{g.name}</div>
-              <div style={{fontSize:11,opacity:.85,fontWeight:400}}>{g.period}</div>
-              <div style={{fontSize:10,opacity:.75,fontWeight:400}}>{g.coalition}</div>
+              <div style={{fontSize:10,opacity:.85,fontWeight:400}}>{g.period}</div>
+              <div style={{fontSize:10,opacity:.7,fontWeight:400}}>{g.coalition}</div>
             </button>
           );
         })}
       </div>
 
       {/* Category tabs */}
-      <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
-        {cats.map(cat=>{
-          const active=selCat===cat.id;
+      <div style={{display:'flex',gap:8,marginBottom:18,flexWrap:'wrap'}}>
+        {CATS.map(cat=>{
+          const active=selC===cat.id;
           return (
-            <button key={cat.id} onClick={()=>switchCat(cat.id)} style={{
-              padding:"8px 16px",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:13,
-              border:`1px solid ${active?gov.color:"#e5e7eb"}`,
-              background:active?gov.color:"white",
-              color:active?"white":"#374151",transition:"all .2s"}}>
+            <button key={cat.id} onClick={()=>setSelC(cat.id)} style={{
+              padding:'8px 15px',borderRadius:8,fontSize:13,fontWeight:600,
+              border:`1px solid ${active?gov.color:'#e5e7eb'}`,
+              background:active?gov.color:'white',
+              color:active?'white':'#374151',transition:'all .2s'}}>
               {cat.label}
             </button>
           );
@@ -572,68 +486,40 @@ function GovernmentsDashboard() {
       </div>
 
       {/* Content */}
-      <div style={{background:"white",borderRadius:14,padding:24,marginBottom:20,
-        boxShadow:"0 1px 4px rgba(0,0,0,0.08)",border:"1px solid #e5e7eb"}}>
+      <div className="fade-in" style={{background:'white',borderRadius:14,padding:24,marginBottom:20,
+        boxShadow:'0 1px 4px rgba(0,0,0,0.08)',border:'1px solid #e5e7eb'}}>
 
         {/* ECONOMIC / SOCIAL / STRUCTURAL */}
-        {data&&(
+        {selC!=='achievements'&&selC!=='context'&&(
           <>
-            <h2 style={{margin:"0 0 4px 0",fontWeight:900,fontSize:19,color:gov.color}}>
-              {gov.name}{" "}
-              <span style={{color:"#6b7280",fontWeight:400,fontSize:15}}>({gov.period})</span>
+            <h2 style={{fontWeight:900,fontSize:19,color:gov.color,marginBottom:2}}>
+              {gov.name} <span style={{color:'#6b7280',fontWeight:400,fontSize:15}}>({gov.period})</span>
             </h2>
-            <h3 style={{margin:"0 0 16px 0",fontWeight:600,fontSize:14,color:"#374151"}}>{data.headline}</h3>
-            <p style={{fontSize:13,color:"#374151",lineHeight:1.8,margin:"0 0 20px 0",
-              padding:"12px 16px",background:"#f9fafb",borderRadius:8,
+            <h3 style={{fontWeight:600,fontSize:14,color:'#374151',marginBottom:14}}>{data.headline}</h3>
+            <p style={{fontSize:13,color:'#374151',lineHeight:1.8,marginBottom:18,
+              padding:'12px 16px',background:'#f9fafb',borderRadius:8,
               borderLeft:`4px solid ${gov.color}`}}>{data.summary}</p>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:12,marginBottom:20}}>
-              {data.metrics.map((m,i)=>{
-                const [bg,col,icon]=MC[m.status];
-                return (
-                  <div key={i} style={{background:bg,borderRadius:10,padding:"12px 14px"}}>
-                    <div style={{fontSize:11,color:col,fontWeight:700,marginBottom:4}}>{icon} {m.label}</div>
-                    <div style={{fontSize:15,fontWeight:900,color:col}}>{m.value}</div>
-                  </div>
-                );
-              })}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(185px,1fr))',gap:12,marginBottom:4}}>
+              {data.metrics.map((m,i)=><MetricCard key={i} label={m.l} value={m.v} status={m.s}/>)}
             </div>
-            <button onClick={()=>setOpenAT(!openAT)} style={{
-              width:"100%",background:openAT?"#fffbeb":"#f9fafb",
-              border:`1px solid ${openAT?"#f59e0b":"#e5e7eb"}`,borderRadius:8,
-              padding:"10px 16px",cursor:"pointer",textAlign:"left",
-              fontSize:13,fontWeight:700,color:openAT?"#92400e":"#374151",
-              display:"flex",justifyContent:"space-between"}}>
-              <span>🔍 Lectura anti-trampa de este período</span>
-              <span style={{fontSize:11}}>{openAT?"▲":"▼"}</span>
-            </button>
-            {openAT&&(
-              <div style={{marginTop:8,padding:16,background:"#fffbeb",
-                borderRadius:8,border:"1px solid #fde68a"}}>
-                <p style={{fontSize:13,color:"#78350f",lineHeight:1.8,margin:0}}>{data.antiTrap}</p>
-              </div>
-            )}
+            <AntiTrap text={data.antiTrap} label="🔍 Lectura anti-trampa de este período"/>
           </>
         )}
 
         {/* ACHIEVEMENTS */}
-        {selCat==="achievements"&&(
+        {selC==='achievements'&&(
           <>
-            <h2 style={{margin:"0 0 18px 0",fontWeight:900,fontSize:19,color:gov.color}}>
-              {gov.name}{" "}
-              <span style={{color:"#6b7280",fontWeight:400,fontSize:15}}>({gov.period})</span>
-              <span style={{color:"#374151",fontWeight:500,fontSize:15}}> — Logros y Fracasos</span>
+            <h2 style={{fontWeight:900,fontSize:19,color:gov.color,marginBottom:18}}>
+              {gov.name} <span style={{color:'#6b7280',fontWeight:400,fontSize:15}}>({gov.period})</span>
+              <span style={{color:'#374151',fontWeight:500,fontSize:15}}> — Logros y Fracasos</span>
             </h2>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
               {gov.achievements.map((a,i)=>{
-                const isG=a.startsWith("✅"), isW=a.startsWith("⚠️");
+                const isG=a.startsWith('✅'),isW=a.startsWith('⚠️');
+                const c=isG?C.good:isW?C.warning:C.bad;
                 return (
-                  <div key={i} style={{
-                    padding:"12px 16px",borderRadius:8,fontSize:13,fontWeight:500,
-                    background:isG?"#f0fdf4":isW?"#fefce8":"#fef2f2",
-                    border:`1px solid ${isG?"#bbf7d0":isW?"#fde68a":"#fecaca"}`,
-                    color:isG?"#166534":isW?"#854d0e":"#991b1b"}}>
-                    {a}
-                  </div>
+                  <div key={i} style={{padding:'11px 16px',borderRadius:8,fontSize:13,fontWeight:500,
+                    background:c.bg,border:`1px solid ${c.border}`,color:c.color}}>{a}</div>
                 );
               })}
             </div>
@@ -641,105 +527,66 @@ function GovernmentsDashboard() {
         )}
 
         {/* CONTEXT */}
-        {selCat==="context"&&(
+        {selC==='context'&&(
           <>
-            <h2 style={{margin:"0 0 18px 0",fontWeight:900,fontSize:19,color:gov.color}}>
-              {gov.name}{" "}
-              <span style={{color:"#6b7280",fontWeight:400,fontSize:15}}>({gov.period})</span>
-              <span style={{color:"#374151",fontWeight:500,fontSize:15}}> — Contexto</span>
+            <h2 style={{fontWeight:900,fontSize:19,color:gov.color,marginBottom:18}}>
+              {gov.name} <span style={{color:'#6b7280',fontWeight:400,fontSize:15}}>({gov.period})</span>
+              <span style={{color:'#374151',fontWeight:500,fontSize:15}}> — Contexto</span>
             </h2>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
-              <div style={{background:"#f0fdf4",borderRadius:10,padding:16,border:"1px solid #bbf7d0"}}>
-                <div style={{fontWeight:800,color:"#166534",marginBottom:12,fontSize:13}}>✅ Factores favorables</div>
-                {gov.context.favorable.map((f,i)=>(
-                  <div key={i} style={{fontSize:13,color:"#166534",padding:"5px 0",
-                    borderBottom:i<gov.context.favorable.length-1?"1px solid #bbf7d0":"none"}}>• {f}</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:4}}>
+              <div style={{background:C.good.bg,borderRadius:10,padding:16,border:`1px solid ${C.good.border}`}}>
+                <div style={{fontWeight:800,color:C.good.color,marginBottom:12,fontSize:13}}>✅ Factores favorables</div>
+                {gov.context.fav.map((f,i)=>(
+                  <div key={i} style={{fontSize:13,color:C.good.color,padding:'5px 0',
+                    borderBottom:i<gov.context.fav.length-1?`1px solid ${C.good.border}`:'none'}}>• {f}</div>
                 ))}
               </div>
-              <div style={{background:"#fef2f2",borderRadius:10,padding:16,border:"1px solid #fecaca"}}>
-                <div style={{fontWeight:800,color:"#991b1b",marginBottom:12,fontSize:13}}>❌ Factores adversos</div>
-                {gov.context.adverse.map((f,i)=>(
-                  <div key={i} style={{fontSize:13,color:"#991b1b",padding:"5px 0",
-                    borderBottom:i<gov.context.adverse.length-1?"1px solid #fecaca":"none"}}>• {f}</div>
+              <div style={{background:C.bad.bg,borderRadius:10,padding:16,border:`1px solid ${C.bad.border}`}}>
+                <div style={{fontWeight:800,color:C.bad.color,marginBottom:12,fontSize:13}}>❌ Factores adversos</div>
+                {gov.context.adv.map((f,i)=>(
+                  <div key={i} style={{fontSize:13,color:C.bad.color,padding:'5px 0',
+                    borderBottom:i<gov.context.adv.length-1?`1px solid ${C.bad.border}`:'none'}}>• {f}</div>
                 ))}
               </div>
             </div>
-            <button onClick={()=>setOpenAT(!openAT)} style={{
-              width:"100%",background:openAT?"#fffbeb":"#f9fafb",
-              border:`1px solid ${openAT?"#f59e0b":"#e5e7eb"}`,borderRadius:8,
-              padding:"10px 16px",cursor:"pointer",textAlign:"left",
-              fontSize:13,fontWeight:700,color:openAT?"#92400e":"#374151",
-              display:"flex",justifyContent:"space-between"}}>
-              <span>🔍 Lectura anti-trampa del contexto</span>
-              <span style={{fontSize:11}}>{openAT?"▲":"▼"}</span>
-            </button>
-            {openAT&&(
-              <div style={{marginTop:8,padding:16,background:"#fffbeb",
-                borderRadius:8,border:"1px solid #fde68a"}}>
-                <p style={{fontSize:13,color:"#78350f",lineHeight:1.8,margin:0}}>{gov.context.antiTrap}</p>
-              </div>
-            )}
+            <AntiTrap text={gov.context.antiTrap} label="🔍 Lectura anti-trampa del contexto"/>
           </>
         )}
       </div>
 
       {/* Charts */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-        <div style={{background:"white",borderRadius:14,padding:20,
-          boxShadow:"0 1px 4px rgba(0,0,0,0.08)",border:"1px solid #e5e7eb"}}>
-          <div style={{fontWeight:800,fontSize:14,color:"#111827",marginBottom:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <div style={{background:'white',borderRadius:14,padding:20,
+          boxShadow:'0 1px 4px rgba(0,0,0,0.08)',border:'1px solid #e5e7eb'}}>
+          <div style={{fontWeight:800,fontSize:14,color:'#111827',marginBottom:16}}>
             📊 PIB promedio por gobierno
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={gdpChart}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/>
-              <XAxis dataKey="name" tick={{fontSize:10}}/>
-              <YAxis tick={{fontSize:11}} unit="%"/>
-              <Tooltip formatter={v=>[`${v}%`,"PIB promedio"]}/>
-              <Bar dataKey="pib" name="PIB promedio" radius={[5,5,0,0]}>
-                {gdpChart.map((e,i)=>(
-                  <Cell key={i} fill={e.color} opacity={e.name===gov.name?1:0.35}/>
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <BarChart data={gdpData} unit="%" highlight={gov.name}/>
         </div>
-        <div style={{background:"white",borderRadius:14,padding:20,
-          boxShadow:"0 1px 4px rgba(0,0,0,0.08)",border:"1px solid #e5e7eb"}}>
-          <div style={{fontWeight:800,fontSize:14,color:"#111827",marginBottom:16}}>
+        <div style={{background:'white',borderRadius:14,padding:20,
+          boxShadow:'0 1px 4px rgba(0,0,0,0.08)',border:'1px solid #e5e7eb'}}>
+          <div style={{fontWeight:800,fontSize:14,color:'#111827',marginBottom:16}}>
             📈 Evolución deuda pública / PIB
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={debtChart}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/>
-              <XAxis dataKey="etapa" tick={{fontSize:9}} angle={-15} textAnchor="end" height={45}/>
-              <YAxis tick={{fontSize:11}} unit="%"/>
-              <Tooltip formatter={v=>[`${v}%`,"Deuda/PIB"]}/>
-              <Line type="monotone" dataKey="deuda" stroke="#6366f1" strokeWidth={2.5}
-                dot={{r:4,fill:"#6366f1"}} name="Deuda/PIB"/>
-            </LineChart>
-          </ResponsiveContainer>
+          <LineChart data={debtData}/>
         </div>
       </div>
     </div>
   );
 }
 
-// ============================================================
-// MAIN APP
-// ============================================================
-function App() {
-  const [tab, setTab] = useState("ocde");
+/* ─── APP PRINCIPAL ───────────────────────────────── */
+function App(){
+  const [tab,setTab]=useState('ocde');
   return (
-    <div style={{fontFamily:"'Segoe UI',system-ui,sans-serif",minHeight:"100vh",background:"#f1f5f9"}}>
+    <div style={{fontFamily:"'Segoe UI',system-ui,sans-serif",minHeight:'100vh',background:'#f1f5f9'}}>
       {/* Header */}
-      <div style={{background:"linear-gradient(135deg,#1e3a5f 0%,#2d5986 100%)",
-        color:"white",padding:"22px 28px 0"}}>
-        <div style={{maxWidth:1200,margin:"0 auto"}}>
-          <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
+      <div style={{background:'linear-gradient(135deg,#1e3a5f 0%,#2d5986 100%)',color:'white',padding:'22px 28px 0'}}>
+        <div style={{maxWidth:1200,margin:'0 auto'}}>
+          <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:18}}>
             <span style={{fontSize:32}}>🇨🇱</span>
             <div>
-              <h1 style={{margin:0,fontSize:21,fontWeight:900,letterSpacing:"-0.5px"}}>
+              <h1 style={{margin:0,fontSize:21,fontWeight:900,letterSpacing:'-0.5px'}}>
                 Dashboard Económico Chile
               </h1>
               <p style={{margin:0,fontSize:12,opacity:.75,marginTop:3}}>
@@ -747,13 +594,13 @@ function App() {
               </p>
             </div>
           </div>
-          <div style={{display:"flex",gap:6}}>
-            {[{id:"ocde",label:"🌍 Chile vs OCDE"},{id:"govs",label:"🏛️ Los Gobiernos"}].map(t=>(
+          <div style={{display:'flex',gap:6}}>
+            {[{id:'ocde',label:'🌍 Chile vs OCDE'},{id:'govs',label:'🏛️ Los Gobiernos'}].map(t=>(
               <button key={t.id} onClick={()=>setTab(t.id)} style={{
-                padding:"10px 22px",borderRadius:"8px 8px 0 0",border:"none",cursor:"pointer",
-                fontWeight:700,fontSize:14,transition:"all .2s",
-                background:tab===t.id?"white":"rgba(255,255,255,0.15)",
-                color:tab===t.id?"#1e3a5f":"white"}}>
+                padding:'10px 22px',borderRadius:'8px 8px 0 0',border:'none',
+                fontWeight:700,fontSize:14,transition:'all .2s',
+                background:tab===t.id?'white':'rgba(255,255,255,0.15)',
+                color:tab===t.id?'#1e3a5f':'white'}}>
                 {t.label}
               </button>
             ))}
@@ -762,21 +609,20 @@ function App() {
       </div>
 
       {/* Content */}
-      <div style={{maxWidth:1200,margin:"0 auto",padding:"24px 16px"}}>
-        {tab==="ocde" ? <OcdeDashboard/> : <GovernmentsDashboard/>}
+      <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 16px'}}>
+        {tab==='ocde'?<OcdeDashboard/>:<GovsDashboard/>}
       </div>
 
       {/* Footer */}
-      <div style={{textAlign:"center",padding:"18px",color:"#9ca3af",fontSize:11,
-        borderTop:"1px solid #e5e7eb",background:"white",marginTop:16}}>
-        📚 Fuentes: Banco Central de Chile · DIPRES · Consejo Fiscal Autónomo (CFA) · CASEN 2024 · OCDE Estudio Chile 2025 · Banco Mundial · FMI
+      <div style={{textAlign:'center',padding:'18px',color:'#9ca3af',fontSize:11,
+        borderTop:'1px solid #e5e7eb',background:'white',marginTop:16}}>
+        📚 Banco Central de Chile · DIPRES · Consejo Fiscal Autónomo · CASEN 2024 · OCDE 2025 · Banco Mundial · FMI
       </div>
     </div>
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App/>);
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
